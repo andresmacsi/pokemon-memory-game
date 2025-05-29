@@ -19,6 +19,7 @@ class MemoryGame {    constructor() {
         this.cpuMemory = new Map();
         this.cpuThinkingTime = { min: 1000, max: 2000 };
         this.networkManager = null;
+        this.playerNumber = null; // 1 para host, 2 para invitado
         
         // Referencias DOM
         this.gameBoard = document.getElementById('gameBoard');
@@ -40,24 +41,88 @@ class MemoryGame {    constructor() {
 
         // Event Listeners
         this.startButton.addEventListener('click', () => this.initializeGame());
-        this.gameModeSelect.addEventListener('change', (e) => {
-            this.gameMode = e.target.value;
-            this.player2Label.textContent = this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2';
-            this.onlineOptions.style.display = this.gameMode === 'online' ? 'block' : 'none';
-        });
+        this.gameModeSelect.addEventListener('change', (e) => this.handleGameModeChange(e));
         this.createRoomButton.addEventListener('click', () => this.createRoom());
         this.joinRoomButton.addEventListener('click', () => this.joinRoom());
         this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());
-    }    initializeGame() {
-        this.resetGame();
-        const selectedPokemon = this.getRandomPokemon(12); // 12 parejas = 24 cartas
-        this.cards = this.shuffleCards([...selectedPokemon, ...selectedPokemon]);
+    }
+
+    handleGameModeChange(e) {
+        const newMode = e.target.value;
         
-        if (this.gameMode === 'online' && this.networkManager.isHost) {
-            this.networkManager.sendGameState(this.cards);
+        // Limpiar estado anterior
+        if (this.networkManager) {
+            this.networkManager.disconnect();
+            this.networkManager = null;
         }
         
-        this.renderCards();
+        // Resetear UI
+        this.resetUIForNewMode();
+        
+        // Configurar nuevo modo
+        this.gameMode = newMode;
+        this.player2Label.textContent = this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2';
+        this.onlineOptions.style.display = this.gameMode === 'online' ? 'block' : 'none';
+        
+        // Limpiar el tablero
+        this.resetGame();
+    }
+
+    resetUIForNewMode() {
+        // Resetear UI del modo online
+        this.createRoomButton.disabled = false;
+        this.joinRoomButton.disabled = false;
+        this.roomInput.disabled = false;
+        this.roomInput.value = '';
+        this.roomInfo.style.display = 'none';
+        this.connectionStatus.textContent = 'No conectado';
+        this.connectionStatus.classList.remove('connected');
+        
+        // Habilitar controles principales
+        this.enableStart();
+        this.startButton.textContent = 'Iniciar Juego';
+    }
+
+    disableStart() {
+        this.startButton.disabled = true;
+        this.startButton.textContent = 'Esperando al anfitrión...';
+        this.gameModeSelect.disabled = true;
+    }
+
+    enableStart() {
+        this.startButton.disabled = false;
+        this.startButton.textContent = 'Iniciar Juego';
+        this.gameModeSelect.disabled = false;
+    }
+
+    initializeGame() {
+        if (this.gameMode === 'online' && !this.networkManager?.connection) {
+            alert('Debes crear una sala o unirte a una primero');
+            return;
+        }
+
+        this.resetGame();
+
+        // Asignar número de jugador en modo online
+        if (this.gameMode === 'online') {
+            this.playerNumber = this.networkManager.isHost ? 1 : 2;
+        }
+
+        // Solo el host genera y envía las cartas
+        if (this.gameMode !== 'online' || this.networkManager.isHost) {
+            const selectedPokemon = this.getRandomPokemon(12); // 12 parejas = 24 cartas
+            this.cards = this.shuffleCards([...selectedPokemon, ...selectedPokemon]);
+            
+            if (this.gameMode === 'online') {
+                // El host envía el estado inicial
+                this.networkManager.sendGameState({
+                    cards: this.cards,
+                    currentPlayer: this.currentPlayer
+                });
+            }
+            this.renderCards();
+        }
+
         this.updateTurnIndicator();
     }
 
@@ -83,17 +148,22 @@ class MemoryGame {    constructor() {
     }
 
     renderCards() {
+        this.gameBoard.innerHTML = '';
+        console.log('Renderizando cartas:', this.cards);
         this.cards.forEach((pokemon, index) => {
             const card = document.createElement('div');
             card.className = 'card';
+            card.setAttribute('data-index', index);
             card.innerHTML = `
-                <div class="card-front"></div>
-                <div class="card-back">
-                    <img src="${pokemon.image}" alt="${pokemon.name}">
+                <div class="card-inner">
+                    <div class="card-front"></div>
+                    <div class="card-back">
+                        <img src="${pokemon.image}" alt="${pokemon.name}" loading="eager" 
+                             data-pokemon-id="${pokemon.id}" />
+                    </div>
                 </div>
             `;
-            card.dataset.index = index;
-            card.addEventListener('click', () => this.handleCardClick(index));
+            card.addEventListener('click', () => this.flipCard(card, index));
             this.gameBoard.appendChild(card);
         });
     }
@@ -133,41 +203,55 @@ class MemoryGame {    constructor() {
     }
 
     flipCard(card, index) {
-        card.classList.add('flipped');
-    }    async checkMatch() {
-        const [index1, index2] = this.flippedCards;
-        const match = this.cards[index1].id === this.cards[index2].id;
+        // Verificar si es mi turno y si puedo voltear la carta
+        if (
+            this.isLocked || 
+            this.flippedCards.length >= 2 || 
+            card.classList.contains('flipped') ||
+            (this.gameMode === 'online' && !this.isMyTurn())
+        ) {
+            return;
+        }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        card.classList.add('flipped');
+        this.flippedCards.push({ card, index });
+
+        // Notificar al otro jugador
+        if (this.gameMode === 'online') {
+            this.networkManager.sendCardFlip(index);
+        }
+
+        if (this.flippedCards.length === 2) {
+            this.isLocked = true;
+            this.checkMatch();
+        }
+    }
+
+    isMyTurn() {
+        if (this.gameMode !== 'online') return true;
+        return this.currentPlayer === this.playerNumber;
+    }
+
+    checkMatch() {
+        const [firstCard, secondCard] = this.flippedCards;
+        const match = this.cards[firstCard.index].id === this.cards[secondCard.index].id;
 
         if (match) {
-            // Si hay coincidencia, el jugador mantiene su turno
-            await this.handleMatch(index1, index2);
-            this.flippedCards = [];
-            this.isLocked = false;
-            
-            // Si es CPU y encontró una pareja, debe seguir jugando
-            if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                await this.playCPUTurn();
-            }
+            this.handleMatch();
         } else {
-            // Si no hay coincidencia, cambia el turno
-            await this.handleMismatch(index1, index2);
-            this.flippedCards = [];
-            this.isLocked = false;
-            
-            // Cambiar turno solo cuando no hay coincidencia
-            const wasPlayer1 = this.currentPlayer === 1;
-            this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
-            this.updateTurnIndicator();
+            this.handleMismatch();
+        }
 
-            // Si es modo un jugador y cambiamos al turno de la CPU
-            if (this.gameMode === 'singlePlayer' && wasPlayer1) {
-                // Pequeña pausa antes de que la CPU juegue
-                await new Promise(resolve => setTimeout(resolve, 500));
-                await this.playCPUTurn();
-            }
+        // Cambiar turno en modo multijugador
+        if (this.gameMode !== 'singlePlayer') {
+            setTimeout(() => {
+                this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+                if (this.gameMode === 'online') {
+                    this.networkManager.sendTurnChange(this.currentPlayer);
+                }
+                this.updateTurnIndicator();
+                this.isLocked = false;
+            }, 1000);
         }
     }    async handleMatch(index1, index2) {
         const card1 = this.gameBoard.children[index1];
@@ -220,9 +304,13 @@ class MemoryGame {    constructor() {
     }
 
     updateTurnIndicator() {
-        const currentPlayerName = this.currentPlayer === 1 ? 'Jugador 1' : 
-            (this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2');
-        this.currentPlayerText.textContent = currentPlayerName;
+        const currentPlayerText = document.getElementById('currentPlayerText');
+        if (this.gameMode === 'online') {
+            currentPlayerText.textContent = this.currentPlayer === this.playerNumber ? 
+                'Tu turno' : 'Turno del oponente';
+        } else {
+            currentPlayerText.textContent = `Jugador ${this.currentPlayer}`;
+        }
         
         // Actualizar estados visuales
         const player1Elements = document.querySelectorAll('.player1');
@@ -338,46 +426,46 @@ class MemoryGame {    constructor() {
         }, 500);
     }    async createRoom() {
         try {
-            // Verificar que NetworkManager esté disponible
-            if (typeof NetworkManager === 'undefined') {
-                throw new Error('El componente de red no está disponible');
-            }
-
-            // Inicializar el NetworkManager si no existe
-            if (!this.networkManager) {
-                this.networkManager = new NetworkManager(this);
-            }
-            
+            this.networkManager = new NetworkManager(this);
             const roomId = await this.networkManager.initializeHost();
-            if (!roomId) {
-                throw new Error('No se pudo obtener un ID de sala');
-            }
-
-            this.roomCode.textContent = roomId;
+            
+            // Actualizar UI
             this.roomInfo.style.display = 'block';
+            this.roomCode.textContent = roomId;
+            this.createRoomButton.disabled = true;
+            this.joinRoomButton.disabled = true;
+            this.roomInput.disabled = true;
+            
+            // Mostrar estado de espera
+            document.getElementById('connectionStatus').textContent = 'Esperando al otro jugador...';
         } catch (error) {
-            console.error('Error al crear la sala:', error);
-            alert('Error al crear la sala: ' + error.message);
+            alert('Error al crear la sala. Por favor, intenta nuevamente.');
+            console.error('Error al crear sala:', error);
         }
     }
 
     async joinRoom() {
+        const hostId = this.roomInput.value.trim();
+        if (!hostId) {
+            alert('Por favor ingresa un código de sala válido');
+            return;
+        }
+
         try {
-            const roomId = this.roomInput.value.trim();
-            if (!roomId) {
-                alert('Por favor, ingresa un código de sala válido.');
-                return;
-            }
-
-            // Inicializar el NetworkManager si no existe
-            if (!this.networkManager) {
-                this.networkManager = new NetworkManager(this);
-            }
-
-            await this.networkManager.joinGame(roomId);
+            this.networkManager = new NetworkManager(this);
+            await this.networkManager.joinGame(hostId);
+            
+            // Actualizar UI
+            this.createRoomButton.disabled = true;
+            this.joinRoomButton.disabled = true;
+            this.roomInput.disabled = true;
+            this.disableStart();
+            
+            // Mostrar estado de conexión
+            document.getElementById('connectionStatus').textContent = 'Conectando...';
         } catch (error) {
+            alert('No se pudo conectar a la sala. Verifica el código e intenta nuevamente.');
             console.error('Error al unirse a la sala:', error);
-            alert('Error al unirse a la sala. Verifica el código e intenta de nuevo.');
         }
     }
 
@@ -398,23 +486,25 @@ class MemoryGame {    constructor() {
     }
 
     handleRemoteCardFlip(index) {
-        if (this.gameMode === 'online') {
-            const card = this.gameBoard.children[index];
-            this.flipCard(card, index);
-            this.flippedCards.push(index);
+        if (!this.isLocked) {
+            const card = this.gameBoard.querySelector(`[data-index="${index}"]`);
+            if (card && !card.classList.contains('flipped')) {
+                // No enviar el flip de vuelta al otro jugador
+                card.classList.add('flipped');
+                this.flippedCards.push({ card, index });
 
-            if (this.flippedCards.length === 2) {
-                this.isLocked = true;
-                this.checkMatch();
+                if (this.flippedCards.length === 2) {
+                    this.isLocked = true;
+                    this.checkMatch();
+                }
             }
         }
     }
 
     handleRemoteTurnChange(newCurrentPlayer) {
-        if (this.gameMode === 'online') {
-            this.currentPlayer = newCurrentPlayer;
-            this.updateTurnIndicator();
-        }
+        this.currentPlayer = newCurrentPlayer;
+        this.isLocked = false;
+        this.updateTurnIndicator();
     }
 }
 
