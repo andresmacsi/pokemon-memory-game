@@ -5,7 +5,8 @@ const KANTO_POKEMON = Array.from({length: 151}, (_, i) => ({
     image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i + 1}.png`
 }));
 
-class MemoryGame {    constructor() {
+class MemoryGame {
+    constructor() {
         this.cards = [];
         this.flippedCards = [];
         this.matchedPairs = 0;
@@ -63,7 +64,16 @@ class MemoryGame {    constructor() {
         });
     }    handleGameModeChange(e) {
         const newMode = e.target.value;
-        console.log('Cambiando modo de juego a:', newMode); // Debug
+        console.log('Cambiando modo de juego a:', newMode);
+
+        // Reiniciar el juego completamente
+        this.resetGame();
+        
+        // Limpiar estado anterior
+        if (this.networkManager) {
+            this.networkManager.disconnect();
+            this.networkManager = null;
+        }
         
         // Limpiar estado anterior
         if (this.networkManager) {
@@ -124,10 +134,15 @@ class MemoryGame {    constructor() {
         this.startButton.disabled = false;
         this.startButton.textContent = 'Iniciar Juego';
         this.gameModeSelect.disabled = false;
-    }
-
-    initializeGame() {
-        console.log('Iniciando juego en modo:', this.gameMode); // Debug
+    }    initializeGame() {
+        console.log('Iniciando juego en modo:', this.gameMode);
+        console.log('Estado actual:', {
+            isLocked: this.isLocked,
+            currentPlayer: this.currentPlayer,
+            scores: this.scores,
+            flippedCards: this.flippedCards,
+            gameMode: this.gameMode
+        });
         
         if (this.gameMode === 'online' && !this.networkManager?.connection) {
             alert('Debes crear una sala o unirte a una primero');
@@ -202,17 +217,24 @@ class MemoryGame {    constructor() {
                     </div>
                 </div>
             `;
-            card.addEventListener('click', () => this.flipCard(card, index));
+            card.addEventListener('click', () => this.handleCardClick(index));
             this.gameBoard.appendChild(card);
         });
     }    handleCardClick(index) {
+        // Verificar si el jugador puede hacer clic
         if (this.isLocked || 
             this.flippedCards.includes(index) || 
-            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2)) {
+            card.classList.contains('matched') ||
+            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) ||
+            (this.gameMode === 'online' && this.currentPlayer !== this.playerNumber)) {
             return;
         }
 
-        this.flipCard(this.gameBoard.children[index], index);
+        const card = this.gameBoard.children[index];
+        if (card.classList.contains('flipped')) return;
+
+        card.classList.add('flipped');
+        this.flippedCards.push(index);
 
         // Actualizar memoria de CPU
         if (this.gameMode === 'singlePlayer') {
@@ -225,8 +247,15 @@ class MemoryGame {    constructor() {
             }
         }
 
+        // Enviar el movimiento en modo online
         if (this.gameMode === 'online') {
             this.networkManager.sendCardFlip(index);
+        }
+
+        // Verificar si se han volteado dos cartas
+        if (this.flippedCards.length === 2) {
+            this.isLocked = true;
+            setTimeout(() => this.checkMatch(), 1000);
         }
     }    flipCard(card, index) {
         if (card.classList.contains('flipped') || card.classList.contains('matched')) {
