@@ -44,7 +44,19 @@ class MemoryGame {
         this.gameModeSelect.addEventListener('change', (e) => this.handleGameModeChange(e));
         this.createRoomButton.addEventListener('click', () => this.createRoom());
         this.joinRoomButton.addEventListener('click', () => this.joinRoom());
-        this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());
+        this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());        this.roomInput.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pastedText = e.clipboardData.getData('text').trim();
+            // Verifica que el texto pegado sea un código de sala válido (alfanumérico)
+            if (/^[a-zA-Z0-9]+$/.test(pastedText)) {
+                this.roomInput.value = pastedText;
+                this.roomInput.classList.remove('error');
+            } else {
+                this.roomInput.classList.add('error');
+                setTimeout(() => this.roomInput.classList.remove('error'), 2000);
+                alert('El código de sala debe contener solo letras y números');
+            }
+        });
     }
 
     handleGameModeChange(e) {
@@ -215,7 +227,7 @@ class MemoryGame {
         }
 
         card.classList.add('flipped');
-        this.flippedCards.push({ card, index });
+        this.flippedCards.push(index);
 
         if (this.gameMode === 'online') {
             this.networkManager.sendCardFlip(index);
@@ -223,33 +235,45 @@ class MemoryGame {
 
         if (this.flippedCards.length === 2) {
             this.isLocked = true;
-            setTimeout(() => this.checkMatch(), 500);
+            this.checkMatch();
         }
-    }
-
-    isMyTurn() {
-        if (this.gameMode !== 'online') return true;
-        return this.currentPlayer === this.playerNumber;
     }
 
     checkMatch() {
-        const [firstCard, secondCard] = this.flippedCards;
-        const match = this.cards[firstCard.index].id === this.cards[secondCard.index].id;
+        const [index1, index2] = this.flippedCards;
+        const card1 = this.gameBoard.children[index1];
+        const card2 = this.gameBoard.children[index2];
+        
+        const pokemon1 = this.cards[index1];
+        const pokemon2 = this.cards[index2];
+        
+        const match = pokemon1.id === pokemon2.id;
 
         if (match) {
-            this.handleMatch();
+            this.handleMatch(index1, index2);
         } else {
-            this.handleMismatch();
+            setTimeout(() => {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                this.handleMismatch();
+            }, 1000);
         }
 
-        // Cambiar turno en modo multijugador
-        if (this.gameMode !== 'singlePlayer') {
+        this.flippedCards = [];
+        
+        // Cambiar turno solo si no hay coincidencia
+        if (!match) {
             setTimeout(() => {
                 this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
-                if (this.gameMode === 'online') {
-                    this.networkManager.sendTurnChange(this.currentPlayer);
-                }
                 this.updateTurnIndicator();
+                this.isLocked = false;
+                
+                if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
+                    this.playCPUTurn();
+                }
+            }, 1500);
+        } else {
+            setTimeout(() => {
                 this.isLocked = false;
             }, 1000);
         }
