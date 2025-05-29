@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Memory Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Pokémon Memory Game</h1>
+        <div class="game-options">
+            <select id="gameMode">
+                <option value="singlePlayer">1 Jugador vs CPU</option>
+                <option value="twoPlayers">2 Jugadores (local)</option>
+                <option value="online">2 Jugadores (en línea)</option>
+            </select>
+            <button id="startGame">Iniciar Juego</button>
+        </div>
+
+        <div id="onlineOptions" class="online-options" style="display: none;">
+            <div class="host-options">
+                <button id="createRoom">Crear Sala</button>
+                <div id="roomInfo" style="display: none;">
+                    <p>Comparte este código con tu amigo:</p>
+                    <div class="room-code">
+                        <span id="roomCode"></span>
+                        <button id="copyCode">Copiar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="join-options">
+                <input type="text" id="roomInput" placeholder="Ingresa el código de la sala">
+                <button id="joinRoom">Unirse a Sala</button>
+            </div>
+            <div id="connectionStatus" class="connection-status">No conectado</div>
+        </div>
+
+        <div id="turnIndicator" class="turn-indicator">
+            <div class="pokemon-ball"></div>
+            <p>Turno de: <span id="currentPlayerText">Jugador 1</span></p>
+        </div>
+        <div class="score-board">
+            <div class="player1">
+                <h3>Jugador 1</h3>
+                <p>Parejas: <span id="score1">0</span></p>
+            </div>
+            <div class="player2">
+                <h3 id="player2Label">CPU</h3>
+                <p>Parejas: <span id="score2">0</span></p>
+            </div>
+        </div>
+        <div id="gameBoard" class="game-board">
+            <!-- Las cartas se generarán dinámicamente aquí -->        </div>
+    </div>
+    <script src="network.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
