@@ -5,23 +5,11 @@ const KANTO_POKEMON = Array.from({length: 151}, (_, i) => ({
     image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i + 1}.png`
 }));
 
-class MemoryGame {
-    constructor() {
+class MemoryGame {    constructor() {
         this.cards = [];
         this.flippedCards = [];
         this.matchedPairs = 0;
-        this.isLocked        // 3. Si todo lo demás falla, hacer un movimiento aleatorio
-        if (!firstCard || !secondCard) {
-            const availableCards = Array.from(this.gameBoard.children)
-                .map((_, i) => i)
-                .filter(i => 
-                    !this.gameBoard.children[i].classList.contains('matched') &&
-                    !this.gameBoard.children[i].classList.contains('flipped')
-                );
-            if (availableCards.length >= 2) {
-                const shuffledCards = this.shuffleCards(availableCards);
-                [firstCard, secondCard] = shuffledCards.slice(0, 2);
-            }
+        this.isLocked = false;
         this.gameMode = 'singlePlayer';
         this.currentPlayer = 1;
         this.scores = {
@@ -73,10 +61,9 @@ class MemoryGame {
                 }
             }, 0);
         });
-    }
-
-    handleGameModeChange(e) {
+    }    handleGameModeChange(e) {
         const newMode = e.target.value;
+        console.log('Cambiando modo de juego a:', newMode); // Debug
         
         // Limpiar estado anterior
         if (this.networkManager) {
@@ -92,8 +79,23 @@ class MemoryGame {
         this.player2Label.textContent = this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2';
         this.onlineOptions.style.display = this.gameMode === 'online' ? 'block' : 'none';
         
-        // Limpiar el tablero
+        // Reiniciar el juego con el nuevo modo
         this.resetGame();
+        
+        // Habilitar o deshabilitar opciones según el modo
+        if (this.gameMode === 'online') {
+            this.startButton.disabled = true;
+            this.createRoomButton.disabled = false;
+            this.joinRoomButton.disabled = false;
+            this.roomInput.disabled = false;
+        } else {
+            this.startButton.disabled = false;
+            if (this.onlineOptions) {
+                this.createRoomButton.disabled = true;
+                this.joinRoomButton.disabled = true;
+                this.roomInput.disabled = true;
+            }
+        }
     }
 
     resetUIForNewMode() {
@@ -125,34 +127,42 @@ class MemoryGame {
     }
 
     initializeGame() {
+        console.log('Iniciando juego en modo:', this.gameMode); // Debug
+        
         if (this.gameMode === 'online' && !this.networkManager?.connection) {
             alert('Debes crear una sala o unirte a una primero');
             return;
         }
 
         this.resetGame();
+        this.isLocked = false;
+        this.currentPlayer = 1;
+        this.scores = { player1: 0, player2: 0 };
 
         // Asignar número de jugador en modo online
         if (this.gameMode === 'online') {
             this.playerNumber = this.networkManager.isHost ? 1 : 2;
         }
 
-        // Solo el host genera y envía las cartas
-        if (this.gameMode !== 'online' || this.networkManager.isHost) {
-            const selectedPokemon = this.getRandomPokemon(12); // 12 parejas = 24 cartas
-            this.cards = this.shuffleCards([...selectedPokemon, ...selectedPokemon]);
-            
-            if (this.gameMode === 'online') {
-                // El host envía el estado inicial
-                this.networkManager.sendGameState({
-                    cards: this.cards,
-                    currentPlayer: this.currentPlayer
-                });
-            }
-            this.renderCards();
+        // Generar y mostrar las cartas
+        const selectedPokemon = this.getRandomPokemon(12); // 12 parejas = 24 cartas
+        this.cards = this.shuffleCards([...selectedPokemon, ...selectedPokemon]);
+        
+        if (this.gameMode === 'online' && this.networkManager.isHost) {
+            // El host envía el estado inicial
+            this.networkManager.sendGameState({
+                cards: this.cards,
+                currentPlayer: this.currentPlayer
+            });
         }
-
+        
+        this.renderCards();
         this.updateTurnIndicator();
+        
+        // Inicializar estado según el modo de juego
+        if (this.gameMode === 'singlePlayer') {
+            this.cpuMemory.clear();
+        }
     }
 
     resetGame() {
