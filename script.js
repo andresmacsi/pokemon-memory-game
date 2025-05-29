@@ -285,9 +285,7 @@ class MemoryGame {
             this.isLocked = true;
             setTimeout(() => this.checkMatch(), 1000);
         }
-    }
-
-    checkMatch() {
+    }    checkMatch() {
         const [index1, index2] = this.flippedCards;
         const card1 = this.gameBoard.children[index1];
         const card2 = this.gameBoard.children[index2];
@@ -299,18 +297,24 @@ class MemoryGame {
 
         if (match) {
             this.handleMatch(index1, index2);
+            this.flippedCards = [];
+            setTimeout(() => {
+                this.isLocked = false;
+                // Si hay coincidencia, mantener el turno y permitir que siga jugando
+                if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
+                    this.playCPUTurn();
+                }
+            }, 1000);
         } else {
             setTimeout(() => {
                 card1.classList.remove('flipped');
                 card2.classList.remove('flipped');
                 this.handleMismatch();
             }, 1000);
-        }
-
-        this.flippedCards = [];
-        
-        // Cambiar turno solo si no hay coincidencia
-        if (!match) {
+            
+            this.flippedCards = [];
+            
+            // Cambiar turno solo si no hay coincidencia
             setTimeout(() => {
                 this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
                 this.updateTurnIndicator();
@@ -320,10 +324,6 @@ class MemoryGame {
                     this.playCPUTurn();
                 }
             }, 1500);
-        } else {
-            setTimeout(() => {
-                this.isLocked = false;
-            }, 1000);
         }
     }    async handleMatch(index1, index2) {
         const card1 = this.gameBoard.children[index1];
@@ -355,31 +355,23 @@ class MemoryGame {
         const card1 = this.gameBoard.children[index1];
         const card2 = this.gameBoard.children[index2];
 
-        // Mostrar mensaje de no coincidencia
-        const nextPlayerName = this.currentPlayer === 1 ? 
-            (this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2') : 
-            'Jugador 1';
-        const message = document.createElement('div');
-        message.className = 'mismatch-message';
-        message.textContent = `No hay coincidencia. Turno de ${nextPlayerName}`;
-        document.body.appendChild(message);
+        // Esperar un momento antes de voltear las cartas
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        message.remove();
-
-        // Ocultar las cartas no coincidentes
+        // Voltear las cartas boca abajo
         card1.classList.remove('flipped');
         card2.classList.remove('flipped');
+        
+        // Desbloquear el tablero
+        this.isLocked = false;
         
         // Cambiar el turno
         this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
         this.updateTurnIndicator();
-        this.isLocked = false;
-        this.flippedCards = [];
 
-        // Si es turno de la CPU, jugar después de un breve retraso
+        // Si es el turno de la CPU en modo un jugador, ejecutar su turno
         if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-            setTimeout(() => this.playCPUTurn(), 1000);
+            setTimeout(() => this.cpuTurn(), 1000);
         }
     }
 
