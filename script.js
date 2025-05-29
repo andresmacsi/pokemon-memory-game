@@ -44,18 +44,23 @@ class MemoryGame {
         this.gameModeSelect.addEventListener('change', (e) => this.handleGameModeChange(e));
         this.createRoomButton.addEventListener('click', () => this.createRoom());
         this.joinRoomButton.addEventListener('click', () => this.joinRoom());
-        this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());        this.roomInput.addEventListener('paste', (e) => {
-            e.preventDefault();
+        this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());        // Manejar el pegado de texto
+        this.roomInput.addEventListener('paste', (e) => {
+            // No prevenir el comportamiento por defecto para permitir el pegado normal
             const pastedText = e.clipboardData.getData('text').trim();
-            // Verifica que el texto pegado sea un código de sala válido (alfanumérico)
-            if (/^[a-zA-Z0-9]+$/.test(pastedText)) {
-                this.roomInput.value = pastedText;
-                this.roomInput.classList.remove('error');
-            } else {
-                this.roomInput.classList.add('error');
-                setTimeout(() => this.roomInput.classList.remove('error'), 2000);
-                alert('El código de sala debe contener solo letras y números');
-            }
+            
+            // Validar después de que el texto se haya pegado
+            setTimeout(() => {
+                const currentValue = this.roomInput.value.trim();
+                if (!/^[a-zA-Z0-9]+$/.test(currentValue)) {
+                    this.roomInput.classList.add('error');
+                    this.roomInput.value = ''; // Limpiar el input si no es válido
+                    setTimeout(() => this.roomInput.classList.remove('error'), 2000);
+                    alert('El código de sala debe contener solo letras y números');
+                } else {
+                    this.roomInput.classList.remove('error');
+                }
+            }, 0);
         });
     }
 
@@ -179,24 +184,24 @@ class MemoryGame {
             card.addEventListener('click', () => this.flipCard(card, index));
             this.gameBoard.appendChild(card);
         });
-    }
-
-    handleCardClick(index) {
+    }    handleCardClick(index) {
         const card = this.gameBoard.children[index];
         
         if (this.isLocked || 
             this.flippedCards.includes(index) || 
             card.classList.contains('matched') ||
-            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2)) {
+            card.classList.contains('flipped') ||
+            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) ||
+            (this.gameMode === 'online' && !this.isMyTurn())) {
             return;
         }
 
-        this.flipCard(card, index);
+        card.classList.add('flipped');
         this.flippedCards.push(index);
 
         if (this.flippedCards.length === 2) {
             this.isLocked = true;
-            this.checkMatch();
+            setTimeout(() => this.checkMatch(), 500);
         }
 
         // Actualizar memoria de CPU
