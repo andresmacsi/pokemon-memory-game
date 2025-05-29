@@ -5,7 +5,8 @@ const KANTO_POKEMON = Array.from({length: 151}, (_, i) => ({
     image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${i + 1}.png`
 }));
 
-class MemoryGame {    constructor() {
+class MemoryGame {
+    constructor() {
         this.cards = [];
         this.flippedCards = [];
         this.matchedPairs = 0;
@@ -19,8 +20,8 @@ class MemoryGame {    constructor() {
         this.cpuMemory = new Map();
         this.cpuThinkingTime = { min: 1000, max: 2000 };
         this.networkManager = null;
-        this.playerNumber = null; // 1 para host, 2 para invitado
-        
+        this.playerNumber = null;
+
         // Referencias DOM
         this.gameBoard = document.getElementById('gameBoard');
         this.startButton = document.getElementById('startGame');
@@ -29,15 +30,14 @@ class MemoryGame {    constructor() {
         this.score1Element = document.getElementById('score1');
         this.score2Element = document.getElementById('score2');
         this.currentPlayerText = document.getElementById('currentPlayerText');
-
-        // Nuevas referencias DOM para el modo online
+        this.connectionStatus = document.getElementById('connectionStatus');
+        this.onlineOptions = document.getElementById('onlineOptions');
         this.createRoomButton = document.getElementById('createRoom');
         this.joinRoomButton = document.getElementById('joinRoom');
         this.roomInput = document.getElementById('roomInput');
         this.roomInfo = document.getElementById('roomInfo');
         this.roomCode = document.getElementById('roomCode');
         this.copyCodeButton = document.getElementById('copyCode');
-        this.onlineOptions = document.getElementById('onlineOptions');
 
         // Event Listeners
         this.startButton.addEventListener('click', () => this.initializeGame());
@@ -69,18 +69,19 @@ class MemoryGame {    constructor() {
     }
 
     resetUIForNewMode() {
-        // Resetear UI del modo online
-        this.createRoomButton.disabled = false;
-        this.joinRoomButton.disabled = false;
-        this.roomInput.disabled = false;
-        this.roomInput.value = '';
-        this.roomInfo.style.display = 'none';
-        this.connectionStatus.textContent = 'No conectado';
-        this.connectionStatus.classList.remove('connected');
+        if (this.createRoomButton) this.createRoomButton.disabled = false;
+        if (this.joinRoomButton) this.joinRoomButton.disabled = false;
+        if (this.roomInput) {
+            this.roomInput.disabled = false;
+            this.roomInput.value = '';
+        }
+        if (this.roomInfo) this.roomInfo.style.display = 'none';
+        if (this.connectionStatus) {
+            this.connectionStatus.textContent = 'No conectado';
+            this.connectionStatus.classList.remove('connected');
+        }
         
-        // Habilitar controles principales
         this.enableStart();
-        this.startButton.textContent = 'Iniciar Juego';
     }
 
     disableStart() {
@@ -203,11 +204,11 @@ class MemoryGame {    constructor() {
     }
 
     flipCard(card, index) {
-        // Verificar si es mi turno y si puedo voltear la carta
         if (
             this.isLocked || 
             this.flippedCards.length >= 2 || 
             card.classList.contains('flipped') ||
+            card.classList.contains('matched') ||
             (this.gameMode === 'online' && !this.isMyTurn())
         ) {
             return;
@@ -216,14 +217,13 @@ class MemoryGame {    constructor() {
         card.classList.add('flipped');
         this.flippedCards.push({ card, index });
 
-        // Notificar al otro jugador
         if (this.gameMode === 'online') {
             this.networkManager.sendCardFlip(index);
         }
 
         if (this.flippedCards.length === 2) {
             this.isLocked = true;
-            this.checkMatch();
+            setTimeout(() => this.checkMatch(), 500);
         }
     }
 
@@ -278,7 +278,7 @@ class MemoryGame {    constructor() {
         if (this.matchedPairs === this.cards.length / 2) {
             this.endGame();
         }
-    }    async handleMismatch(index1, index2) {
+    }    async handleMismatch() {
         // Mostrar mensaje de no coincidencia
         const nextPlayerName = this.currentPlayer === 1 ? 
             (this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2') : 
@@ -291,11 +291,14 @@ class MemoryGame {    constructor() {
         await new Promise(resolve => setTimeout(resolve, 1500));
         message.remove();
 
-        const card1 = this.gameBoard.children[index1];
-        const card2 = this.gameBoard.children[index2];
-        
-        card1.classList.remove('flipped');
-        card2.classList.remove('flipped');
+        // Ocultar las cartas no coincidentes
+        const [firstCard, secondCard] = this.flippedCards;
+        setTimeout(() => {
+            firstCard.card.classList.remove('flipped');
+            secondCard.card.classList.remove('flipped');
+            this.flippedCards = [];
+            this.isLocked = false;
+        }, 1000);
     }
 
     updateScores() {
