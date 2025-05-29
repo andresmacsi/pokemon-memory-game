@@ -91,7 +91,6 @@ select {
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.6s;
-    background-color: #1e3b70; /* Color azul oscuro como en la imagen */
 }
 
 .card.flipped {
@@ -125,27 +124,17 @@ select {
 }
 
 .card-front {
-    background-color: #0066cc;
-    transform: rotateY(180deg);
-}
-
-.card-back {
-    background-color: #0066cc;
-    color: white;
-    font-size: 24px;
-}
-
-.card-front {
     background: linear-gradient(45deg, #1e3b70 0%, #29539b 100%);
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 10px;
 }
 
 .card-front::after {
     content: '';
-    width: 60px;
-    height: 60px;
+    width: 50%;
+    height: 50%;
     background: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png') center/contain no-repeat;
     opacity: 0.9;
 }
