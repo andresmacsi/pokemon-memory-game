@@ -10,7 +10,18 @@ class MemoryGame {
         this.cards = [];
         this.flippedCards = [];
         this.matchedPairs = 0;
-        this.isLocked = false;
+        this.isLocked        // 3. Si todo lo demás falla, hacer un movimiento aleatorio
+        if (!firstCard || !secondCard) {
+            const availableCards = Array.from(this.gameBoard.children)
+                .map((_, i) => i)
+                .filter(i => 
+                    !this.gameBoard.children[i].classList.contains('matched') &&
+                    !this.gameBoard.children[i].classList.contains('flipped')
+                );
+            if (availableCards.length >= 2) {
+                const shuffledCards = this.shuffleCards(availableCards);
+                [firstCard, secondCard] = shuffledCards.slice(0, 2);
+            }
         this.gameMode = 'singlePlayer';
         this.currentPlayer = 1;
         this.scores = {
@@ -185,24 +196,13 @@ class MemoryGame {
             this.gameBoard.appendChild(card);
         });
     }    handleCardClick(index) {
-        const card = this.gameBoard.children[index];
-        
         if (this.isLocked || 
             this.flippedCards.includes(index) || 
-            card.classList.contains('matched') ||
-            card.classList.contains('flipped') ||
-            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) ||
-            (this.gameMode === 'online' && !this.isMyTurn())) {
+            (this.gameMode === 'singlePlayer' && this.currentPlayer === 2)) {
             return;
         }
 
-        card.classList.add('flipped');
-        this.flippedCards.push(index);
-
-        if (this.flippedCards.length === 2) {
-            this.isLocked = true;
-            setTimeout(() => this.checkMatch(), 500);
-        }
+        this.flipCard(this.gameBoard.children[index], index);
 
         // Actualizar memoria de CPU
         if (this.gameMode === 'singlePlayer') {
@@ -218,29 +218,33 @@ class MemoryGame {
         if (this.gameMode === 'online') {
             this.networkManager.sendCardFlip(index);
         }
-    }
-
-    flipCard(card, index) {
-        if (
-            this.isLocked || 
-            this.flippedCards.length >= 2 || 
-            card.classList.contains('flipped') ||
-            card.classList.contains('matched') ||
-            (this.gameMode === 'online' && !this.isMyTurn())
-        ) {
+    }    flipCard(card, index) {
+        if (card.classList.contains('flipped') || card.classList.contains('matched')) {
             return;
         }
 
         card.classList.add('flipped');
         this.flippedCards.push(index);
 
+        // Actualizar memoria de CPU en modo un jugador
+        if (this.gameMode === 'singlePlayer') {
+            const pokemon = this.cards[index];
+            if (!this.cpuMemory.has(pokemon.id)) {
+                this.cpuMemory.set(pokemon.id, []);
+            }
+            if (!this.cpuMemory.get(pokemon.id).includes(index)) {
+                this.cpuMemory.get(pokemon.id).push(index);
+            }
+        }
+
+        // Enviar el movimiento en modo online
         if (this.gameMode === 'online') {
             this.networkManager.sendCardFlip(index);
         }
 
         if (this.flippedCards.length === 2) {
             this.isLocked = true;
-            this.checkMatch();
+            setTimeout(() => this.checkMatch(), 1000);
         }
     }
 
@@ -308,6 +312,10 @@ class MemoryGame {
             this.endGame();
         }
     }    async handleMismatch() {
+        const [index1, index2] = this.flippedCards;
+        const card1 = this.gameBoard.children[index1];
+        const card2 = this.gameBoard.children[index2];
+
         // Mostrar mensaje de no coincidencia
         const nextPlayerName = this.currentPlayer === 1 ? 
             (this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2') : 
@@ -321,13 +329,19 @@ class MemoryGame {
         message.remove();
 
         // Ocultar las cartas no coincidentes
-        const [firstCard, secondCard] = this.flippedCards;
-        setTimeout(() => {
-            firstCard.card.classList.remove('flipped');
-            secondCard.card.classList.remove('flipped');
-            this.flippedCards = [];
-            this.isLocked = false;
-        }, 1000);
+        card1.classList.remove('flipped');
+        card2.classList.remove('flipped');
+        
+        // Cambiar el turno
+        this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+        this.updateTurnIndicator();
+        this.isLocked = false;
+        this.flippedCards = [];
+
+        // Si es turno de la CPU, jugar después de un breve retraso
+        if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
+            setTimeout(() => this.playCPUTurn(), 1000);
+        }
     }
 
     updateScores() {
@@ -429,9 +443,14 @@ class MemoryGame {
             await this.makeCPUMove(firstCard, secondCard);
         }
     }    async makeCPUMove(index1, index2) {
+        if (!this.gameBoard.children[index1] || !this.gameBoard.children[index2]) {
+            this.isLocked = false;
+            return;
+        }
+
         // Primera carta
         const card1 = this.gameBoard.children[index1];
-        this.flipCard(card1, index1);
+        card1.classList.add('flipped');
         this.flippedCards.push(index1);
         
         // Esperar antes de voltear la segunda carta
@@ -439,10 +458,13 @@ class MemoryGame {
         
         // Segunda carta
         const card2 = this.gameBoard.children[index2];
-        this.flipCard(card2, index2);
+        card2.classList.add('flipped');
         this.flippedCards.push(index2);
         
-        // Procesar el resultado
+        // Esperar antes de procesar el resultado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar coincidencia
         await this.checkMatch();
     }
 
