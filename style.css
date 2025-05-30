@@ -77,12 +77,12 @@
     cursor: pointer;
 }
 
-.card.flipped .card-inner {
+.card.flipped {
     transform: rotateY(180deg);
 }
 
 .card-inner {
-    position: absolute;
+    position: relative;
     width: 100%;
     height: 100%;
     transform-style: preserve-3d;
@@ -100,4 +100,87 @@
     align-items: center;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.game-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+select {
+    width: 300px;
+    padding: 15px;
+    font-size: 18px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    color: #2a75bb;
+    cursor: pointer;
+    text-align: center;
+    appearance: none;
+}
+
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #ffcb05;
+}
+
+.select-wrapper {
+    position: relative;
+    width: 300px;
+}
+
+.select-wrapper::after {
+    content: '⌄';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #2a75bb;
+    pointer-events: none;
+    font-size: 24px;
+}
+
+button#startGame {
+    padding: 15px 40px;
+    font-size: 20px;
+    background-color: #ffcb05;
+    color: #1e3b70;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+}
+
+button#startGame:hover {
+    background-color: #f4c200;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+button#startGame:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.title-container {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #2a75bb;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+h1 {
+    font-size: 3em;
+    margin: 0;
+    padding: 20px 0;
 }

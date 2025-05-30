@@ -222,6 +222,7 @@ class MemoryGame {
             this.gameBoard.appendChild(card);
         });
     }    handleCardClick(index) {
+        const card = this.gameBoard.children[index];
         // Verificar si el jugador puede hacer clic
         if (this.isLocked || 
             this.flippedCards.includes(index) || 
@@ -230,8 +231,6 @@ class MemoryGame {
             (this.gameMode === 'online' && this.currentPlayer !== this.playerNumber)) {
             return;
         }
-
-        const card = this.gameBoard.children[index];
         if (card.classList.contains('flipped')) return;
 
         card.classList.add('flipped');
@@ -297,18 +296,39 @@ class MemoryGame {
         const match = pokemon1.id === pokemon2.id;
 
         if (match) {
-            // Si hay coincidencia, mantener el turno y actualizar el juego
-            this.handleMatch(index1, index2);
+            // Si hay coincidencia
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+            this.matchedPairs++;
+            this.scores[`player${this.currentPlayer}`]++;
+            this.updateScores();
             this.flippedCards = [];
+            
+            // Mostrar mensaje y mantener el turno
+            const playerName = this.currentPlayer === 1 ? 'Jugador 1' : 
+                (this.gameMode === 'singlePlayer' ? 'CPU' : 'Jugador 2');
+            const message = document.createElement('div');
+            message.className = 'match-message';
+            message.textContent = `¡${playerName} encontró una pareja! ${playerName} mantiene el turno`;
+            document.body.appendChild(message);
+            
             setTimeout(() => {
+                message.remove();
                 this.isLocked = false;
-                // Si es la CPU y encuentra un par, debe seguir jugando
-                if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-                    setTimeout(() => this.playCPUTurn(), 1000);
+                
+                // Verificar si el juego ha terminado
+                if (this.matchedPairs === this.cards.length / 2) {
+                    this.endGame();
+                    return;
                 }
-            }, 1000);
+                
+                // Si es la CPU y encontró un par, continúa jugando
+                if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
+                    this.playCPUTurn();
+                }
+            }, 1500);
         } else {
-            // Si no hay coincidencia, cambiar el turno
+            // Si no hay coincidencia
             setTimeout(() => {
                 card1.classList.remove('flipped');
                 card2.classList.remove('flipped');
@@ -317,6 +337,7 @@ class MemoryGame {
                 this.updateTurnIndicator();
                 this.isLocked = false;
                 
+                // Si es turno de la CPU
                 if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
                     setTimeout(() => this.playCPUTurn(), 1000);
                 }

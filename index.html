@@ -9,15 +9,18 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <h1>Pokémon Memory Game</h1>
+    <div class="container">        <div class="title-container">
+            <h1>Pokémon Memory Game</h1>
+        </div>
         <div class="game-options">
-            <select id="gameMode">
-                <option value="singlePlayer">1 Jugador vs CPU</option>
-                <option value="twoPlayers">2 Jugadores (local)</option>
-                <option value="online">2 Jugadores (en línea)</option>
-            </select>
-            <button id="startGame">Iniciar Juego</button>
+            <div class="select-wrapper">
+                <select id="gameMode">
+                    <option value="singlePlayer">1 Jugador vs CPU</option>
+                    <option value="twoPlayers">2 Jugadores (local)</option>
+                    <option value="online">2 Jugadores (en línea)</option>
+                </select>
+            </div>
+            <button id="startGame" class="start-button">Iniciar Juego</button>
         </div>
 
         <div id="onlineOptions" class="online-options" style="display: none;">
