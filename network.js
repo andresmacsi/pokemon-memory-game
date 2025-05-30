@@ -35,6 +35,8 @@ class NetworkManager {
 
     async joinGame(hostId) {
         try {
+            // Asegurarse de que el ID tenga el formato correcto
+            const formattedHostId = hostId.startsWith('pokemon-memory-') ? hostId : `pokemon-memory-${hostId}`;
             this.peer = new Peer();
             this.isHost = false;
             
@@ -43,7 +45,7 @@ class NetworkManager {
                 this.peer.on('error', reject);
             });
             
-            this.connection = this.peer.connect(hostId);
+            this.connection = this.peer.connect(formattedHostId);
             this.setupConnection();
         } catch (error) {
             console.error('Error al unirse al juego:', error);

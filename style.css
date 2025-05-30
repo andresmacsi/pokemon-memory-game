@@ -112,7 +112,7 @@ h1 {
 .card-back {
     background: white;
     transform: rotateY(180deg);
-    padding: 10px;
+    padding: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -121,8 +121,8 @@ h1 {
 }
 
 .card-back img {
-    max-width: 90%;
-    max-height: 90%;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
@@ -155,6 +155,12 @@ h1 {
     perspective: 1000px;
     cursor: pointer;
     will-change: transform;
+    border-radius: 10px;
+}
+
+.card:hover:not(.flipped):not(.matched) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
 .card.flipped {
@@ -624,4 +630,11 @@ h1 {
         width: 30px;
         height: 30px;
     }
+}
+
+.input-help {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+    text-align: center;
 }

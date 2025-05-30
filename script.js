@@ -43,10 +43,19 @@ class MemoryGame {
         this.startButton.addEventListener('click', () => this.initializeGame());
         this.gameModeSelect.addEventListener('change', (e) => this.handleGameModeChange(e));
         this.createRoomButton.addEventListener('click', () => this.createRoom());
-        this.joinRoomButton.addEventListener('click', () => this.joinRoom());
-        this.copyCodeButton.addEventListener('click', () => this.copyRoomCode());        // Manejar el pegado de texto
+        this.joinRoomButton.addEventListener('click', () => this.joinRoom());        this.copyCodeButton.addEventListener('click', () => {
+            const fullCode = this.roomCode.textContent;
+            const simpleCode = fullCode.replace('pokemon-memory-', '');
+            navigator.clipboard.writeText(simpleCode).then(() => {
+                alert('Código copiado al portapapeles');
+            }).catch(err => {
+                console.error('Error al copiar el código:', err);
+                alert('Error al copiar el código');
+            });
+        });
+
+        // Manejar el pegado de texto
         this.roomInput.addEventListener('paste', (e) => {
-            // No prevenir el comportamiento por defecto para permitir el pegado normal
             const pastedText = e.clipboardData.getData('text').trim();
             
             // Validar después de que el texto se haya pegado
@@ -637,7 +646,33 @@ class MemoryGame {
     }
 }
 
-// Inicializar el juego
+// Instanciar el juego cuando el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', () => {
-    new MemoryGame();
+    // Asegurarse de que todos los elementos existan antes de inicializar
+    if (document.getElementById('gameBoard') && 
+        document.getElementById('startGame') && 
+        document.getElementById('gameMode')) {
+        console.log('Inicializando el juego...');
+        window.game = new MemoryGame();
+    } else {
+        console.error('No se encontraron todos los elementos necesarios');
+    }
+});
+
+// Mover el event listener dentro del DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    const copyButton = document.getElementById('copyCode');
+    if (copyButton) {
+        copyButton.addEventListener('click', () => {
+            const roomCode = document.getElementById('roomCode').textContent;
+            // Extraer solo la parte después de "pokemon-memory-"
+            const simpleCode = roomCode.replace('pokemon-memory-', '');
+            navigator.clipboard.writeText(simpleCode).then(() => {
+                alert('Código copiado al portapapeles');
+            }).catch(err => {
+                console.error('Error al copiar el código:', err);
+                alert('Error al copiar el código');
+            });
+        });
+    }
 });
