@@ -302,7 +302,6 @@ class MemoryGame {
             this.matchedPairs++;
             this.scores[`player${this.currentPlayer}`]++;
             this.updateScores();
-            this.flippedCards = [];
             
             // Mostrar mensaje y mantener el turno
             const playerName = this.currentPlayer === 1 ? 'Jugador 1' : 
@@ -312,8 +311,19 @@ class MemoryGame {
             message.textContent = `¡${playerName} encontró una pareja! ${playerName} mantiene el turno`;
             document.body.appendChild(message);
             
+            // Enviar cambio de estado en modo online
+            if (this.gameMode === 'online' && this.networkManager) {
+                this.networkManager.sendGameState({
+                    cards: this.cards,
+                    currentPlayer: this.currentPlayer,
+                    scores: this.scores,
+                    matchedPairs: this.matchedPairs
+                });
+            }
+            
             setTimeout(() => {
                 message.remove();
+                this.flippedCards = [];
                 this.isLocked = false;
                 
                 // Verificar si el juego ha terminado
@@ -334,6 +344,12 @@ class MemoryGame {
                 card2.classList.remove('flipped');
                 this.flippedCards = [];
                 this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
+                
+                // Enviar cambio de turno en modo online
+                if (this.gameMode === 'online' && this.networkManager) {
+                    this.networkManager.sendTurnChange(this.currentPlayer);
+                }
+                
                 this.updateTurnIndicator();
                 this.isLocked = false;
                 
@@ -389,25 +405,37 @@ class MemoryGame {
 
         // Si es el turno de la CPU en modo un jugador, ejecutar su turno
         if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-            setTimeout(() => this.cpuTurn(), 1000);
+            setTimeout(() => this.playCPUTurn(), 1000);
         }
     }
 
     updateScores() {
         this.score1Element.textContent = this.scores.player1;
         this.score2Element.textContent = this.scores.player2;
-    }
-
-    updateTurnIndicator() {
+    }    updateTurnIndicator() {
         const currentPlayerText = document.getElementById('currentPlayerText');
+        const turnIndicator = document.querySelector('.turn-indicator');
+        
+        // Actualizar el texto según el modo de juego
         if (this.gameMode === 'online') {
             currentPlayerText.textContent = this.currentPlayer === this.playerNumber ? 
-                'Tu turno' : 'Turno del oponente';
+                '¡Tu turno!' : 'Turno del oponente';
+        } else if (this.gameMode === 'singlePlayer') {
+            currentPlayerText.textContent = this.currentPlayer === 1 ? 
+                '¡Tu turno!' : 'Turno de la CPU';
         } else {
-            currentPlayerText.textContent = `Jugador ${this.currentPlayer}`;
+            currentPlayerText.textContent = `¡Turno del Jugador ${this.currentPlayer}!`;
         }
         
-        // Actualizar estados visuales
+        // Actualizar el color del indicador según el jugador
+        turnIndicator.setAttribute('data-current-player', this.currentPlayer);
+        
+        // Agregar animación de shake al cambiar turno
+        turnIndicator.classList.remove('change');
+        void turnIndicator.offsetWidth; // Forzar reflow
+        turnIndicator.classList.add('change');
+        
+        // Actualizar estados visuales de los jugadores
         const player1Elements = document.querySelectorAll('.player1');
         const player2Elements = document.querySelectorAll('.player2');
         
@@ -424,7 +452,7 @@ class MemoryGame {
         } else {
             this.gameBoard.classList.remove('player-inactive');
         }
-    }    async playCPUTurn() {
+    }async playCPUTurn() {
         if (this.gameMode !== 'singlePlayer' || this.currentPlayer !== 2 || this.isLocked) return;
 
         this.isLocked = true; // Bloquear el tablero mientras la CPU piensa
@@ -586,15 +614,13 @@ class MemoryGame {
                     alert('Error al copiar el código. Por favor, cópialo manualmente.');
                 });
         }
-    }
-
-    handleRemoteCardFlip(index) {
+    }    handleRemoteCardFlip(index) {
         if (!this.isLocked) {
             const card = this.gameBoard.querySelector(`[data-index="${index}"]`);
             if (card && !card.classList.contains('flipped')) {
                 // No enviar el flip de vuelta al otro jugador
                 card.classList.add('flipped');
-                this.flippedCards.push({ card, index });
+                this.flippedCards.push(index);
 
                 if (this.flippedCards.length === 2) {
                     this.isLocked = true;
