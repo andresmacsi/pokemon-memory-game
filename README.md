@@ -2,6 +2,8 @@
 
 Un juego de memoria clásico con los Pokémon de la primera generación (Kanto). El juego permite jugar solo contra la CPU o en modo de 2 jugadores.
 
+¡Juega ahora! https://andresmacsi.github.io/pokemon-memory-game/
+
 ## Características
 
 - 151 Pokémon de la región Kanto disponibles
