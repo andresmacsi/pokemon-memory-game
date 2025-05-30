@@ -4,14 +4,33 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 10px;
+}
+
+.card-front::before {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(to bottom, #ff0000 0%, #ff0000 50%, #ffffff 50%, #ffffff 100%);
+    border-radius: 50%;
 }
 
 .card-front::after {
     content: '';
-    width: 60%;
-    height: 60%;
-    background: url('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png') center/contain no-repeat;
-    opacity: 0.9;
+    position: absolute;
+    width: 40px;
+    height: 3px;
+    background: #333;
+}
+
+.card-front span {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #333;
+    border-radius: 50%;
+    border: 2px solid white;
 }
 
 .card-back {

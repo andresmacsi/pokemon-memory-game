@@ -207,10 +207,11 @@ class MemoryGame {
         this.cards.forEach((pokemon, index) => {
             const card = document.createElement('div');
             card.className = 'card';
-            card.setAttribute('data-index', index);
-            card.innerHTML = `
+            card.setAttribute('data-index', index);            card.innerHTML = `
                 <div class="card-inner">
-                    <div class="card-front"></div>
+                    <div class="card-front">
+                        <span></span>
+                    </div>
                     <div class="card-back">
                         <img src="${pokemon.image}" alt="${pokemon.name}" loading="eager" 
                              data-pokemon-id="${pokemon.id}" />
@@ -296,34 +297,30 @@ class MemoryGame {
         const match = pokemon1.id === pokemon2.id;
 
         if (match) {
+            // Si hay coincidencia, mantener el turno y actualizar el juego
             this.handleMatch(index1, index2);
             this.flippedCards = [];
             setTimeout(() => {
                 this.isLocked = false;
-                // Si hay coincidencia, mantener el turno y permitir que siga jugando
+                // Si es la CPU y encuentra un par, debe seguir jugando
                 if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-                    this.playCPUTurn();
+                    setTimeout(() => this.playCPUTurn(), 1000);
                 }
             }, 1000);
         } else {
+            // Si no hay coincidencia, cambiar el turno
             setTimeout(() => {
                 card1.classList.remove('flipped');
                 card2.classList.remove('flipped');
-                this.handleMismatch();
-            }, 1000);
-            
-            this.flippedCards = [];
-            
-            // Cambiar turno solo si no hay coincidencia
-            setTimeout(() => {
+                this.flippedCards = [];
                 this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
                 this.updateTurnIndicator();
                 this.isLocked = false;
                 
                 if (this.gameMode === 'singlePlayer' && this.currentPlayer === 2) {
-                    this.playCPUTurn();
+                    setTimeout(() => this.playCPUTurn(), 1000);
                 }
-            }, 1500);
+            }, 1000);
         }
     }    async handleMatch(index1, index2) {
         const card1 = this.gameBoard.children[index1];
