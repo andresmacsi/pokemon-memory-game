@@ -1,26 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pokémon Memory Game</title>    <link rel="icon" type="image/x-icon" href="favicon.ico">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+<head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Pokémon Memory Game</title>    <link rel="icon" type="image/x-icon" href="favicon.ico">    <link rel="stylesheet" href="pokemon-memory.css">    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script src="game-enhancements.js" defer></script>
     <script src="script.js" defer></script>
     <script src="network.js" defer></script>
 </head>
 <body>
     <div class="container">        <div class="title-container">
             <h1>Pokémon Memory Game</h1>
-        </div>
-        <div class="game-options">
+        </div>        <div class="game-options">
             <div class="select-wrapper">
                 <select id="gameMode">
                     <option value="singlePlayer">1 Jugador vs CPU</option>
                     <option value="twoPlayers">2 Jugadores (local)</option>
                     <option value="online">2 Jugadores (en línea)</option>
                 </select>
-            </div>            <button id="startGame" class="start-button">Iniciar Juego</button>
+            </div>
+            <div class="select-wrapper">
+                <select id="cardCount">
+                    <option value="6">12 cartas (6 pares)</option>
+                    <option value="12">24 cartas (12 pares)</option>
+                    <option value="18">36 cartas (18 pares)</option>
+                </select>
+            </div>
+            <div id="cpuOptions" class="difficulty-selector" style="display: none;">
+                <h3>Dificultad de la CPU</h3>
+                <div class="difficulty-options">
+                    <div class="difficulty-option" data-difficulty="easy">Fácil</div>
+                    <div class="difficulty-option selected" data-difficulty="medium">Media</div>
+                    <div class="difficulty-option" data-difficulty="hard">Difícil</div>
+                    <div class="difficulty-option" data-difficulty="impossible">Imposible</div>
+                </div>
+            </div>
+            <button id="startGame" class="start-button">Iniciar Juego</button>
         </div>
 
         <div id="gameBoard" class="game-board"></div>
@@ -36,9 +48,17 @@
                     <p class="input-help">Tu amigo solo necesita ingresar la parte después de "pokemon-memory-"</p>
                 </div>
             </div>
-            <div class="join-options">                <input type="text" id="roomInput" placeholder="Ingresa el código (sin pokemon-memory-)">
-                <button id="joinRoom">Unirse a Sala</button>
-                <p class="input-help">Nota: Solo ingresa la parte final del código</p>
+            <div class="join-options">                <input type="text" 
+                       id="roomInput" 
+                       class="room-input" 
+                       placeholder="Ingresa el código de sala"
+                       maxlength="9"
+                       pattern="[a-zA-Z0-9]*"
+                       autocapitalize="off"
+                       autocomplete="off"
+                       spellcheck="false">
+                <p class="input-help">Nota: Solo se permiten letras y números</p>
+                <button id="joinRoom" disabled>Unirse a Sala</button>
             </div>
             <div id="connectionStatus" class="connection-status">No conectado</div>
         </div>
